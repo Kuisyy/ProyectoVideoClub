@@ -1,34 +1,45 @@
-// src/index.js
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import { connectDB } from "./config/database.js";
-import authRoutes from "./routes/auth.routes.js";
-import productRoutes from "./routes/product.routes.js";
+import authRoutes from "./routes/authRoutes.js";
+import movieRoutes from "./routes/movieRoutes.js"; // Corregido el nombre
+import { fetchAndStoreMovies } from "./services/tmdb.js"; // Importamos la función para traer películas
 
 // Cargamos las variables de entorno
 dotenv.config();
 // Creamos la app
 const app = express();
 
-// Middlewares para parsear el body y cors
-app.use(cors());
+// Middlewares
+const corsOptions = {
+  origin: 'http://localhost:80',  // Cambia a la URL exacta del frontend
+  credentials: true,  // Permitir credenciales como cookies
+};
+
+
+
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/products", productRoutes);
+app.use("/api/movies", movieRoutes);
 
-// Error handling middleware para manejar errores de rutas no encontradas y errores de servidor 
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ message: "¡Ups! Algo salió mal!" });
+  res.status(500).json({ message: "Algo ha ido mal" });
 });
 
 const PORT = process.env.PORT || 3000;
 
-connectDB().then(() => {
+connectDB().then(async () => {
   app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
   });
+
+  // Llamamos a la función para obtener y guardar películas
+  await fetchAndStoreMovies();
 });

@@ -1,6 +1,9 @@
-// src/controllers/auth.controller.js
 import jwt from "jsonwebtoken";
 import { User } from "../models/User.js";
+
+const createToken = (userId) => {
+  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "24h" });
+};
 
 export const register = async (req, res) => {
   try {
@@ -8,19 +11,25 @@ export const register = async (req, res) => {
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({ message: "El usuario ya existe" });
     }
 
     const user = new User({ name, email, password });
     await user.save();
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "24h",
-    });
+    const token = createToken(user._id);
 
-    res.status(201).json({ token, user: user.toJSON() });
+    res
+      .cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "Strict",
+      })
+      .status(201)
+      .json({ user: user.toJSON(), message: "Registro exitoso" });
   } catch (error) {
-    res.status(500).json({ message: "Error creating user" });
+    console.error(error);
+    res.status(500).json({ message: "Error en el registro" });
   }
 };
 
@@ -30,20 +39,38 @@ export const login = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Credenciales inválidas" });
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Credenciales inválidas" });
     }
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "24h",
-    });
+    const token = createToken(user._id);
 
-    res.json({ token, user: user.toJSON() });
+    res
+      .cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "Strict",
+      })
+      .json({ user: user.toJSON(), message: "Inicio de sesión exitoso" });
   } catch (error) {
-    res.status(500).json({ message: "Error logging in" });
+    console.error(error);
+    res.status(500).json({ message: "Error en el inicio de sesión" });
   }
 };
+
+export const logout = (req, res) => {
+  res.clearCookie("token").json({ message: "Logout exitoso" });
+};
+
+export const checkAuth = (req, res) => {
+  if (req.user) {
+    // Si el usuario está autenticado (verificado por el middleware authenticateToken)
+    return res.json({ user: req.user });
+  }
+  return res.status(401).json({ message: "No autenticado" });
+};
+
