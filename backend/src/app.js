@@ -13,9 +13,10 @@ const app = express();
 
 // Middlewares
 const corsOptions = {
-  origin: 'http://localhost:80',  // Cambia a la URL exacta del frontend
-  credentials: true,  // Permitir credenciales como cookies
+  origin: ['http://localhost', 'http://localhost:80'], // Agregar ambas opciones
+  credentials: true,
 };
+
 
 
 
